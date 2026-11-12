@@ -1,0 +1,997 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Chrome Dino Runner en tu navegador: corre, salta, esquiva obstáculos y supera tu récord. Sin descargas ni registros.">
+    <title>NLC Dino Runner — Juega en tu navegador</title>
+    <style>
+        :root {
+            --bg: #f5f7fa;
+            --surface: #ffffff;
+            --ink: #0b1220;
+            --muted: #5b6678;
+            --line: #e3e8ef;
+            --accent: #17a34a;
+            --accent-2: #0ea5e9;
+            --amber: #f59e0b;
+            --radius: 18px;
+            --shadow-sm: 0 1px 2px rgba(16, 24, 40, .06), 0 1px 3px rgba(16, 24, 40, .1);
+            --shadow-lg: 0 30px 70px -28px rgba(16, 24, 40, .45);
+            --font: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+            --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--font);
+            background: var(--bg);
+            color: var(--ink);
+            line-height: 1.55;
+            overflow-x: hidden;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* Fondo con degradados suaves */
+        body::before {
+            content: "";
+            position: fixed;
+            inset: -25% -10% auto -10%;
+            height: 80vh;
+            z-index: -1;
+            background:
+                radial-gradient(38% 48% at 14% 18%, rgba(23, 163, 74, .16), transparent 70%),
+                radial-gradient(34% 44% at 86% 8%, rgba(14, 165, 233, .14), transparent 70%),
+                radial-gradient(30% 42% at 58% 0%, rgba(245, 158, 11, .13), transparent 70%);
+            filter: blur(12px);
+            pointer-events: none;
+        }
+
+        .container {
+            width: min(1180px, 92vw);
+            margin-inline: auto;
+        }
+
+        section {
+            scroll-margin-top: 92px;
+        }
+
+        /* ------------------------------ Navbar ------------------------------ */
+        .nav {
+            position: sticky;
+            top: 0;
+            z-index: 50;
+            background: rgba(245, 247, 250, .78);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border-bottom: 1px solid rgba(227, 232, 239, .9);
+        }
+
+        .nav-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 18px;
+            height: 68px;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-weight: 800;
+            font-size: 1.05rem;
+            letter-spacing: -.02em;
+            color: var(--ink);
+            text-decoration: none;
+        }
+
+        .brand img {
+            width: 34px;
+            height: 34px;
+            object-fit: contain;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 28px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--muted);
+            text-decoration: none;
+            font-weight: 600;
+            font-size: .95rem;
+            transition: color .2s ease;
+        }
+
+        .nav-links a:hover {
+            color: var(--ink);
+        }
+
+        /* ------------------------------ Botones ----------------------------- */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            border: 0;
+            border-radius: 12px;
+            padding: 13px 22px;
+            font-family: inherit;
+            font-weight: 700;
+            font-size: .95rem;
+            cursor: pointer;
+            text-decoration: none;
+            white-space: nowrap;
+            transition: transform .15s ease, box-shadow .2s ease, background .2s ease;
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid rgba(23, 163, 74, .5);
+            outline-offset: 2px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(180deg, #1cb85a, #159347);
+            color: #fff;
+            box-shadow: 0 10px 24px -10px rgba(23, 163, 74, .85);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 32px -12px rgba(23, 163, 74, .95);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-ghost {
+            background: var(--surface);
+            color: var(--ink);
+            border: 1px solid var(--line);
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn-ghost:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn-sm {
+            padding: 9px 16px;
+            font-size: .88rem;
+        }
+
+        /* ------------------------------ Hero -------------------------------- */
+        .hero {
+            display: grid;
+            grid-template-columns: 1.02fr .98fr;
+            gap: 52px;
+            align-items: center;
+            padding: 62px 0 76px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            color: var(--muted);
+            border-radius: 999px;
+            padding: 7px 14px;
+            font-size: .82rem;
+            font-weight: 600;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .badge .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent);
+            box-shadow: 0 0 0 4px rgba(23, 163, 74, .16);
+        }
+
+        .hero h1 {
+            font-size: clamp(2.3rem, 4.2vw, 3.7rem);
+            line-height: 1.04;
+            letter-spacing: -.035em;
+            margin: 18px 0 16px;
+            font-weight: 850;
+        }
+
+        .accent-text {
+            background: linear-gradient(90deg, #17a34a, #0ea5e9);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .hero .lead {
+            color: var(--muted);
+            font-size: 1.07rem;
+            max-width: 54ch;
+        }
+
+        .hero-actions {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 26px;
+        }
+
+        .hero-stats {
+            display: flex;
+            gap: 30px;
+            list-style: none;
+            margin-top: 34px;
+            padding-top: 22px;
+            border-top: 1px dashed var(--line);
+            flex-wrap: wrap;
+        }
+
+        .hero-stats li {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .hero-stats strong {
+            font-size: 1.55rem;
+            letter-spacing: -.02em;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .hero-stats span {
+            font-size: .74rem;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: var(--muted);
+            font-weight: 700;
+        }
+
+        /* --------------------------- Tarjeta juego -------------------------- */
+        .game-card {
+            background: #0b1220;
+            border-radius: 22px;
+            padding: 10px;
+            box-shadow: var(--shadow-lg);
+            position: relative;
+            width: 100%;
+        }
+
+        .game-chrome {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 4px 8px 12px;
+        }
+
+        .window-dots {
+            display: flex;
+            gap: 6px;
+        }
+
+        .window-dots i {
+            display: block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .window-dots i:nth-child(1) { background: #ff5f57; }
+        .window-dots i:nth-child(2) { background: #febc2e; }
+        .window-dots i:nth-child(3) { background: #28c840; }
+
+        .game-title {
+            font-family: var(--mono);
+            font-size: .76rem;
+            color: #94a3b8;
+            letter-spacing: .02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .live {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: .7rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: .09em;
+            color: #86efac;
+            white-space: nowrap;
+        }
+
+        .live .pulse {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            background: #22c55e;
+            animation: pulse 1.6s infinite;
+        }
+
+        @keyframes pulse {
+            0%   { box-shadow: 0 0 0 0 rgba(34, 197, 94, .6); }
+            70%  { box-shadow: 0 0 0 8px rgba(34, 197, 94, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(34, 197, 94, 0); }
+        }
+
+        .game-screen {
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            border: 1px solid #1e293b;
+        }
+
+        .game-screen canvas {
+            display: block;
+            width: 100%;
+            height: auto;
+            touch-action: none;
+            outline: none;
+        }
+
+        .game-screen canvas:focus-visible {
+            outline: 3px solid rgba(34, 197, 94, .75);
+            outline-offset: -3px;
+        }
+
+        .game-hud {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 12px 8px 4px;
+            flex-wrap: wrap;
+        }
+
+        .hud-chips {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #111c2f;
+            border: 1px solid #1e293b;
+            color: #cbd5e1;
+            border-radius: 999px;
+            padding: 5px 12px;
+            font-size: .76rem;
+            font-weight: 700;
+        }
+
+        .chip b {
+            color: #fff;
+            font-family: var(--mono);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .chip i {
+            font-style: normal;
+            font-size: .85rem;
+        }
+
+        .game-hint {
+            color: #64748b;
+            font-size: .74rem;
+            font-weight: 600;
+        }
+
+        /* ---------------------------- Secciones ----------------------------- */
+        .section-head {
+            max-width: 660px;
+            margin: 0 auto 38px;
+            text-align: center;
+        }
+
+        .eyebrow {
+            font-size: .76rem;
+            font-weight: 800;
+            letter-spacing: .16em;
+            text-transform: uppercase;
+            color: var(--accent);
+        }
+
+        .section-head h2 {
+            font-size: clamp(1.7rem, 3vw, 2.45rem);
+            letter-spacing: -.03em;
+            margin-top: 8px;
+        }
+
+        .section-head p {
+            color: var(--muted);
+            margin-top: 10px;
+        }
+
+        .features {
+            padding: 66px 0;
+        }
+
+        .feature-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 18px;
+        }
+
+        .feature {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 24px;
+            box-shadow: var(--shadow-sm);
+            transition: transform .2s ease, box-shadow .2s ease;
+        }
+
+        .feature:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 20px 44px -24px rgba(16, 24, 40, .4);
+        }
+
+        .feature .icon {
+            width: 54px;
+            height: 54px;
+            display: grid;
+            place-items: center;
+            border-radius: 15px;
+            background: #f1f6f3;
+            margin-bottom: 16px;
+        }
+
+        .feature .icon img {
+            width: 32px;
+            height: 32px;
+            object-fit: contain;
+            image-rendering: pixelated;
+        }
+
+        .feature h3 {
+            font-size: 1.03rem;
+            margin-bottom: 6px;
+        }
+
+        .feature p {
+            color: var(--muted);
+            font-size: .9rem;
+        }
+
+        .how {
+            padding: 66px 0;
+        }
+
+        .steps {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 18px;
+        }
+
+        .step {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: var(--radius);
+            padding: 26px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .step .num {
+            font-family: var(--mono);
+            font-weight: 800;
+            color: #d3dbe7;
+            font-size: 2rem;
+            line-height: 1;
+        }
+
+        .step h3 {
+            margin: 10px 0 6px;
+            font-size: 1.05rem;
+        }
+
+        .step p {
+            color: var(--muted);
+            font-size: .9rem;
+        }
+
+        .controls-table {
+            margin-top: 24px;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .key {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 14px;
+            font-size: .85rem;
+            font-weight: 600;
+            color: var(--muted);
+            box-shadow: var(--shadow-sm);
+        }
+
+        kbd {
+            font-family: var(--mono);
+            background: #0b1220;
+            color: #fff;
+            border-radius: 6px;
+            padding: 2px 7px;
+            font-size: .76rem;
+            font-weight: 700;
+            box-shadow: 0 2px 0 #334155;
+        }
+
+        /* ------------------------------- CTA -------------------------------- */
+        .cta {
+            padding: 14px 0 78px;
+        }
+
+        .cta-inner {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(120deg, #0b1220, #0f2a1b 58%, #0b1220);
+            color: #fff;
+            border-radius: 26px;
+            padding: 48px 52px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 28px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .cta-inner::after {
+            content: "";
+            position: absolute;
+            right: -8%;
+            bottom: -70%;
+            width: 460px;
+            height: 460px;
+            background: radial-gradient(circle, rgba(34, 197, 94, .38), transparent 62%);
+            pointer-events: none;
+        }
+
+        .cta h2 {
+            font-size: clamp(1.6rem, 3vw, 2.2rem);
+            letter-spacing: -.03em;
+        }
+
+        .cta p {
+            color: #9aa8bd;
+            margin-top: 8px;
+            max-width: 52ch;
+        }
+
+        .cta .btn {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* ------------------------------ Footer ------------------------------ */
+        footer {
+            border-top: 1px solid var(--line);
+            padding: 26px 0 42px;
+            color: var(--muted);
+            font-size: .85rem;
+        }
+
+        .footer-inner {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 16px;
+            flex-wrap: wrap;
+        }
+
+        /* --------------------------- Animaciones ---------------------------- */
+        .will-reveal {
+            opacity: 0;
+            transform: translateY(18px);
+            transition: opacity .6s ease, transform .6s ease;
+        }
+
+        .will-reveal.is-visible {
+            opacity: 1;
+            transform: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            html { scroll-behavior: auto; }
+            .will-reveal { opacity: 1; transform: none; transition: none; }
+            .live .pulse { animation: none; }
+        }
+
+        /* ----------------------------- Responsive --------------------------- */
+        @media (max-width: 980px) {
+            .hero {
+                grid-template-columns: 1fr;
+                gap: 38px;
+                padding-top: 44px;
+            }
+
+            .game-card {
+                max-width: 700px;
+                margin-inline: auto;
+            }
+
+            .feature-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .steps {
+                grid-template-columns: 1fr;
+            }
+
+            .nav-links {
+                display: none;
+            }
+
+            .cta-inner {
+                flex-direction: column;
+                text-align: center;
+                padding: 38px 26px;
+            }
+        }
+
+        @media (max-width: 640px) {
+            .feature-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .hero-stats {
+                gap: 18px;
+            }
+
+            .hero-actions .btn {
+                flex: 1;
+            }
+
+            .game-hud {
+                justify-content: center;
+            }
+
+            .game-hint {
+                width: 100%;
+                text-align: center;
+            }
+
+            .cta {
+                padding-bottom: 56px;
+            }
+
+            .brand span {
+                max-width: 44vw;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- ============================ NAVBAR ============================ -->
+    <header class="nav">
+        <div class="container nav-inner">
+            <a class="brand" href="#inicio">
+                <img src="/static/assets/Dino/DinoStart.png" alt="Dino Runner">
+                <span>Dino Runner</span>
+            </a>
+
+            <nav aria-label="Navegación principal">
+                <ul class="nav-links">
+                    <li><a href="#juego">Jugar</a></li>
+                    <li><a href="#como-jugar">Cómo jugar</a></li>
+                    <li><a href="#powerups">Power-ups</a></li>
+                </ul>
+            </nav>
+
+            <button class="btn btn-primary btn-sm" type="button" data-play>▶ Jugar</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- ============================= HERO ============================= -->
+        <section class="hero container" id="inicio">
+            <div class="hero-copy">
+                <span class="badge">
+                    <span class="dot" aria-hidden="true"></span>
+                    100% en tu navegador · sin descargas
+                </span>
+
+                <h1>Corre, salta y <span class="accent-text">sobrevive</span> al desierto.</h1>
+
+                <p class="lead">
+                    El clásico Dino Runner ahora como experiencia web. Esquiva cactus y pájaros,
+                    activa escudos, lanza martillos y compite contra tu propio récord.
+                </p>
+
+                <div class="hero-actions">
+                    <button class="btn btn-primary" type="button" data-play>▶ Jugar ahora</button>
+                    <a class="btn btn-ghost" href="#como-jugar">Cómo jugar</a>
+                </div>
+
+                <ul class="hero-stats">
+                    <li>
+                        <strong id="stat-best">0</strong>
+                        <span>Récord</span>
+                    </li>
+                    <li>
+                        <strong id="stat-lives">5</strong>
+                        <span>Vidas</span>
+                    </li>
+                    <li>
+                        <strong id="stat-speed">1.0x</strong>
+                        <span>Velocidad</span>
+                    </li>
+                </ul>
+            </div>
+
+            <!-- ======================= TARJETA DEL JUEGO ======================= -->
+            <div class="game-card" id="juego" data-reveal>
+                <div class="game-chrome">
+                    <div class="window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+                    <span class="game-title">nlc-dino-runner — /jugar</span>
+                    <span class="live"><span class="pulse" aria-hidden="true"></span>En vivo</span>
+                </div>
+
+                <div class="game-screen">
+                    <canvas id="gameCanvas" width="1100" height="600" tabindex="0"
+                            aria-label="Juego Chrome Dino Runner"></canvas>
+                </div>
+
+                <div class="game-hud">
+                    <div class="hud-chips">
+                        <span class="chip"><i aria-hidden="true">🏆</i> Puntos <b id="hud-points">0</b></span>
+                        <span class="chip"><i aria-hidden="true">❤️</i> Vidas <b id="hud-lives">5</b></span>
+                        <span class="chip"><i aria-hidden="true">💀</i> Muertes <b id="hud-deaths">0</b></span>
+                    </div>
+                    <span class="game-hint">↑ saltar · ↓ agacharse · Espacio martillo</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================== POWER-UPS ========================== -->
+        <section class="features" id="powerups">
+            <div class="container">
+                <div class="section-head" data-reveal>
+                    <span class="eyebrow">Power-ups</span>
+                    <h2>Ventajas para llegar más lejos</h2>
+                    <p>Recoge objetos mientras corres. Aparecen de forma aleatoria: mantente atento.</p>
+                </div>
+
+                <div class="feature-grid">
+                    <article class="feature" data-reveal>
+                        <div class="icon">
+                            <img src="/static/assets/Other/shield.png" alt="Escudo">
+                        </div>
+                        <h3>Escudo</h3>
+                        <p>Te vuelve invulnerable durante unos segundos. Ideal para atravesar ráfagas de obstáculos.</p>
+                    </article>
+
+                    <article class="feature" data-reveal>
+                        <div class="icon">
+                            <img src="/static/assets/Other/hammer.png" alt="Martillo">
+                        </div>
+                        <h3>Martillo</h3>
+                        <p>Pulsa <kbd>Espacio</kbd> para lanzarlo y destruir lo que encuentre a su paso. Tienes 3 usos.</p>
+                    </article>
+
+                    <article class="feature" data-reveal>
+                        <div class="icon">
+                            <img src="/static/assets/Other/SmallHeart.png" alt="Corazón">
+                        </div>
+                        <h3>5 vidas</h3>
+                        <p>Cada choque consume un corazón. Cuando se agotan, la partida termina.</p>
+                    </article>
+
+                    <article class="feature" data-reveal>
+                        <div class="icon">
+                            <img src="/static/assets/Cactus/SmallCactus1.png" alt="Cactus">
+                        </div>
+                        <h3>Ritmo creciente</h3>
+                        <p>Cada 30 puntos el juego acelera. Los obstáculos se vuelven más difíciles de esquivar.</p>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <!-- ========================= CÓMO JUGAR ========================== -->
+        <section class="how" id="como-jugar">
+            <div class="container">
+                <div class="section-head" data-reveal>
+                    <span class="eyebrow">Cómo jugar</span>
+                    <h2>Tres pasos y estás dentro</h2>
+                    <p>No necesitas instalar nada. El juego corre directo en tu navegador.</p>
+                </div>
+
+                <div class="steps">
+                    <article class="step" data-reveal>
+                        <span class="num">01</span>
+                        <h3>Empieza la partida</h3>
+                        <p>Pulsa <strong>Jugar ahora</strong> o haz clic en la pantalla del juego.</p>
+                    </article>
+
+                    <article class="step" data-reveal>
+                        <span class="num">02</span>
+                        <h3>Esquiva y salta</h3>
+                        <p>Usa <kbd>↑</kbd> para saltar y <kbd>↓</kbd> para agacharte ante los pájaros.</p>
+                    </article>
+
+                    <article class="step" data-reveal>
+                        <span class="num">03</span>
+                        <h3>Supera tu récord</h3>
+                        <p>Recoge power-ups y aguanta lo máximo posible. Tu mejor puntuación se guarda en el navegador.</p>
+                    </article>
+                </div>
+
+                <div class="controls-table" data-reveal>
+                    <span class="key"><kbd>↑</kbd> Saltar</span>
+                    <span class="key"><kbd>↓</kbd> Agacharse</span>
+                    <span class="key"><kbd>Espacio</kbd> Lanzar martillo</span>
+                    <span class="key"><kbd>Clic</kbd> Empezar / reiniciar</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================= CTA ============================== -->
+        <section class="cta">
+            <div class="container">
+                <div class="cta-inner" data-reveal>
+                    <div>
+                        <h2>¿Listo para romper tu récord?</h2>
+                        <p>Una partida dura lo que aguantes. Sin descargas ni registros: solo tú y el desierto.</p>
+                    </div>
+                    <button class="btn btn-primary" type="button" data-play>▶ Volver a jugar</button>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- ============================= FOOTER ============================== -->
+    <footer>
+        <div class="container footer-inner">
+            <span>🦖 NLC Dino Runner — versión web con HTML5 Canvas + Flask.</span>
+            <span>Basado en el proyecto original de escritorio (Pygame).</span>
+        </div>
+    </footer>
+
+    <!-- ============================ SCRIPTS ============================== -->
+    <script src="/static/js/game.js"></script>
+    <script>
+        (function () {
+            'use strict';
+
+            var canvas = document.getElementById('gameCanvas');
+            var playButtons = document.querySelectorAll('[data-play]');
+            var elBest = document.getElementById('stat-best');
+            var elLives = document.getElementById('stat-lives');
+            var elSpeed = document.getElementById('stat-speed');
+            var elPoints = document.getElementById('hud-points');
+            var elHudLives = document.getElementById('hud-lives');
+            var elDeaths = document.getElementById('hud-deaths');
+
+            var BEST_KEY = 'nlc-dino-best';
+            var best = 0;
+            var maxSeen = 0;
+
+            try {
+                best = parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0;
+            } catch (error) {
+                best = 0;
+            }
+
+            // Inicia el juego (espera a que game.js termine de cargar los assets)
+            function startGame(attempt) {
+                attempt = attempt || 0;
+                var game = window.game;
+
+                if (game) {
+                    if (canvas) {
+                        try {
+                            canvas.focus({ preventScroll: true });
+                        } catch (error) {
+                            canvas.focus();
+                        }
+                    }
+                    if (!game.playing) {
+                        game.run();
+                    }
+                    return;
+                }
+
+                if (attempt < 30) {
+                    setTimeout(function () { startGame(attempt + 1); }, 100);
+                }
+            }
+
+            playButtons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    var card = document.getElementById('juego');
+                    if (card && card.scrollIntoView) {
+                        card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    startGame();
+                });
+            });
+
+            // Actualiza las estadísticas en vivo desde el estado del juego
+            function renderStats() {
+                var game = window.game;
+
+                if (elBest) {
+                    elBest.textContent = String(best);
+                }
+
+                if (!game) {
+                    return;
+                }
+
+                maxSeen = Math.max(maxSeen, game.points);
+                if (maxSeen > best) {
+                    best = maxSeen;
+                    try {
+                        localStorage.setItem(BEST_KEY, String(best));
+                    } catch (error) {
+                        /* almacenamiento no disponible */
+                    }
+                    if (elBest) {
+                        elBest.textContent = String(best);
+                    }
+                }
+
+                if (elPoints) elPoints.textContent = String(game.points);
+                if (elDeaths) elDeaths.textContent = String(game.death_count);
+                if (elHudLives) elHudLives.textContent = String(game.obstacle_manager.lifes);
+                if (elLives) elLives.textContent = String(game.obstacle_manager.lifes);
+                if (elSpeed) elSpeed.textContent = (game.game_speed / 20).toFixed(1) + 'x';
+            }
+
+            renderStats();
+            setInterval(renderStats, 250);
+
+            // Animación de aparición al hacer scroll
+            var revealElements = document.querySelectorAll('[data-reveal]');
+            if ('IntersectionObserver' in window) {
+                revealElements.forEach(function (element) {
+                    element.classList.add('will-reveal');
+                });
+
+                var observer = new IntersectionObserver(function (entries) {
+                    entries.forEach(function (entry) {
+                        if (entry.isIntersecting) {
+                            entry.target.classList.add('is-visible');
+                            observer.unobserve(entry.target);
+                        }
+                    });
+                }, { threshold: 0.15 });
+
+                revealElements.forEach(function (element) {
+                    observer.observe(element);
+                });
+            }
+        })();
+    </script>
+</body>
+</html>
