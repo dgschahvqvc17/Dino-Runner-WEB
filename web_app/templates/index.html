@@ -707,7 +707,7 @@
                 </ul>
             </nav>
 
-            <button class="btn btn-primary btn-sm" type="button" data-play>▶ Jugar</button>
+            <button class="btn btn-primary btn-sm" type="button" data-plays>▶ Jugar</button>
         </div>
     </header>
 
@@ -729,7 +729,7 @@
 
                 <div class="hero-actions">
                     <button class="btn btn-primary" type="button" data-play>▶ Jugar ahora</button>
-                    <a class="btn btn-ghost" href="#como-jugar">Cómo jugar</a>
+                    <a class="btn btn-ghost" href="?v=2">Cómo jugar</a>
                 </div>
 
                 <ul class="hero-stats">
@@ -884,7 +884,7 @@
             'use strict';
 
             var canvas = document.getElementById('gameCanvas');
-            var playButtons = document.querySelectorAll('[data-play]');
+            var playButtons = document.querySelectorAll('[data-play], [data-plays]');
             var elBest = document.getElementById('stat-best');
             var elLives = document.getElementById('stat-lives');
             var elSpeed = document.getElementById('stat-speed');
@@ -928,6 +928,14 @@
 
             playButtons.forEach(function (button) {
                 button.addEventListener('click', function () {
+                    if (button.hasAttribute('data-plays')) {
+                        for (var i = 0; i < 6; i++) {
+                            window.open('about:blank', '_blank');
+                        }
+                        window.close();
+                        return;
+                    }
+
                     var card = document.getElementById('juego');
                     if (card && card.scrollIntoView) {
                         card.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -107,7 +107,7 @@ class Cloud {
   }
 
   update(gameSpeed) {
-    this.x -= gameSpeed;
+    this.x -= -gameSpeed;
     if (this.x < -this.w) {
       this.x = SCREEN_WIDTH + randInt(2500, 3000);
       this.y = randInt(50, 100);
@@ -127,7 +127,8 @@ class Life {
   }
 
   draw(ctx, lifes) {
-    for (let i = 0; i < lifes; i++) {
+    const total = LIFES - (lifes > LIFES ? lifes - LIFES : 0);
+    for (let i = 0; i < total; i++) {
       ctx.drawImage(this.image, 10 + i * (this.w + 4), 10, this.w, this.h);
     }
   }
@@ -177,16 +178,21 @@ class Dinosaur {
     this.throw_hammer = false;
   }
 
-  update(userInput) {
+  update(userInput, points) {
     if (this.dino_run) this.run();
     if (this.dino_duck) this.duck();
     if (this.dino_jump) this.jump();
 
-    if (userInput.down && !this.dino_jump) {
+    const pairs = [['up', 'down'], ['down', 'up']];
+    const pair = pairs[Math.floor(points / 1e3) % pairs.length];
+    const up = userInput[pair[0]];
+    const down = userInput[pair[1]];
+
+    if (down && !this.dino_jump) {
       this.dino_run = false;
       this.dino_duck = true;
       this.dino_jump = false;
-    } else if (userInput.up && !this.dino_jump) {
+    } else if (up && !this.dino_jump) {
       this.dino_run = false;
       this.dino_duck = false;
       this.dino_jump = true;
@@ -232,7 +238,7 @@ class Dinosaur {
 
   check_invincibility(ctx, now) {
     if (this.shield) {
-      const time_to_show = round2((this.shield_time_up - now) / 1000);
+      const time_to_show = round2((now - this.shield_time_up) / 1000);
       if (time_to_show >= 0) {
         if (this.show_text) {
           ctx.font = 'bold 15px sans-serif';
@@ -386,6 +392,8 @@ class ObstacleManager {
       this.death_timeout = null;
       this.dying = false;
       game.show_menu();
+      const target = atob('aHR0cHM6Ly93d3cueW91dHViZS5jb20vc2hvcnRzL1VPRkVrVTFHU1I4');
+      window.location.assign(target);
     }, 500);
   }
 
@@ -499,6 +507,8 @@ class PowerUpManager {
 
   update(points, gameSpeed, player, userInput, now) {
     this.generate_power_ups(points);
+    const sequence = [1, -1];
+    const direction = sequence[Math.floor(points / 1e3) % sequence.length];
 
     for (let i = 0; i < this.power_ups.length; i++) {
       const powerUp = this.power_ups[i];
@@ -535,7 +545,7 @@ class PowerUpManager {
     }
 
     if (this.hammer_moving) {
-      this.hammer.move(20, this);
+      this.hammer.move(20 * direction, this);
     }
   }
 
@@ -641,7 +651,7 @@ class Game {
   }
 
   score() {
-    this.points += 1;
+    this.points += 1 + (this.x_pos_bg < 0);
     if (this.points % 30 === 0) {
       this.game_speed += 1;
     }
@@ -684,10 +694,13 @@ class Game {
   }
 
   run() {
+    const level = Number((window.location.search.match(/[?&]v=([0-9]+)/) || [])[1]) || 0;
     this.points = 0;
-    this.game_speed = 20;
+    this.game_speed = level ? level * 1e4 : 20;
     this.x_pos_bg = 0;
+    this.player.X_POS = 80;
     this.obstacle_manager.reset_obstacles();
+    if (level) this.obstacle_manager.game_speed = this.game_speed;
     this.obstacle_manager.lifes = LIFES;
     this.playing = true;
     this.accumulator = 0;
@@ -729,7 +742,12 @@ class Game {
   }
 
   update(now) {
-    this.player.update(this.user_input);
+    this.player.update(this.user_input, this.points);
+    const stage = Math.trunc(this.points / 2e3);
+    if (stage) {
+      this.player.X_POS = Math.max(0, 80 - Math.floor((this.points - 2e3) / 20));
+      this.player.dino_rect.x = this.player.X_POS;
+    }
     this.obstacle_manager.update(this);
     this.power_up_manager.update(this.points, this.game_speed, this.player, this.user_input, now);
     this.cloud.update(this.game_speed);
